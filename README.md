@@ -13,6 +13,8 @@ func main() {
 		panic(err)
 	}
 	r.Replace("<old text>", "new text", -1)
+	r.Replace("old", "new", -1)
+	r.Replace("<old>old</old>", "new", -1)
 	r.WriteToFile("./new_template.docx")
 	r.Close()
 }
