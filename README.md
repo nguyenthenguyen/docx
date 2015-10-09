@@ -1,6 +1,6 @@
 ## Simple Google Go (golang) library for replace text in microsoft word (.docx) file
 
-The following constitutes the bare minimum required to replace tex in DOCX document.
+The following constitutes the bare minimum required to replace text in DOCX document.
 ``` go 
 
 import (
