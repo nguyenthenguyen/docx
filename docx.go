@@ -1,0 +1,134 @@
+package docx
+
+import (
+	"archive/zip"
+	"bufio"
+	"bytes"
+	"encoding/xml"
+	"errors"
+	"io"
+	"io/ioutil"
+	"os"
+	"strings"
+)
+
+type ReplaceDocx struct {
+	zipReader *zip.ReadCloser
+	content   string
+}
+
+func (r *ReplaceDocx) Replace(oldString string, newString string, num int) (err error) {
+	oldString, err = encode(oldString)
+	if err != nil {
+		return err
+	}
+	newString, err = encode(newString)
+	if err != nil {
+		return err
+	}
+	r.content = strings.Replace(r.content, oldString, newString, num)
+
+	return nil
+}
+
+func (r *ReplaceDocx) WriteToFile(path string) (err error) {
+	var target *os.File
+	target, err = os.Create(path)
+	if err != nil {
+		return
+	}
+	err = r.Write(target)
+	return
+}
+
+func (r *ReplaceDocx) Close() error {
+	return r.zipReader.Close()
+}
+
+func (r *ReplaceDocx) Write(ioWriter io.Writer) (err error) {
+	w := zip.NewWriter(ioWriter)
+	for _, file := range r.zipReader.File {
+		var writer io.Writer
+		var readCloser io.ReadCloser
+
+		writer, err = w.Create(file.Name)
+		if err != nil {
+			return err
+		}
+		readCloser, err = file.Open()
+		if err != nil {
+			return err
+		}
+		if file.Name == "word/document.xml" {
+			writer.Write([]byte(r.content))
+		} else {
+			writer.Write(streamToByte(readCloser))
+		}
+	}
+	w.Close()
+	return
+}
+
+func ReadDocxFile(path string) (*ReplaceDocx, error) {
+	reader, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+	content, err := readText(reader.File)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReplaceDocx{zipReader: reader, content: content}, nil
+}
+
+func readText(files []*zip.File) (text string, err error) {
+	var documentFile *zip.File
+	documentFile, err = retrieveWordDoc(files)
+	if err != nil {
+		return text, err
+	}
+	var documentReader io.ReadCloser
+	documentReader, err = documentFile.Open()
+	if err != nil {
+		return text, err
+	}
+
+	text, err = wordDocToString(documentReader)
+	return
+}
+
+func wordDocToString(reader io.Reader) (string, error) {
+	b, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
+	for _, f := range files {
+		if f.Name == "word/document.xml" {
+			file = f
+		}
+	}
+	if file == nil {
+		err = errors.New("document.xml file not found")
+	}
+	return
+}
+
+func streamToByte(stream io.Reader) []byte {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(stream)
+	return buf.Bytes()
+}
+
+func encode(s string) (string, error) {
+	var b bytes.Buffer
+	enc := xml.NewEncoder(bufio.NewWriter(&b))
+	if err := enc.Encode(s); err != nil {
+		return s, err
+	}
+	return strings.Replace(strings.Replace(b.String(), "<string>", "", 1), "</string>", "", 1), nil
+}
