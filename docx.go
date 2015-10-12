@@ -17,7 +17,23 @@ type ReplaceDocx struct {
 	content   string
 }
 
-func (r *ReplaceDocx) Replace(oldString string, newString string, num int) (err error) {
+func (r *ReplaceDocx) Editable() *Docx {
+	return &Docx{
+		files:   r.zipReader.File,
+		content: r.content,
+	}
+}
+
+func (r *ReplaceDocx) Close() error {
+	return r.zipReader.Close()
+}
+
+type Docx struct {
+	files   []*zip.File
+	content string
+}
+
+func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
 	oldString, err = encode(oldString)
 	if err != nil {
 		return err
@@ -26,28 +42,24 @@ func (r *ReplaceDocx) Replace(oldString string, newString string, num int) (err 
 	if err != nil {
 		return err
 	}
-	r.content = strings.Replace(r.content, oldString, newString, num)
+	d.content = strings.Replace(d.content, oldString, newString, num)
 
 	return nil
 }
 
-func (r *ReplaceDocx) WriteToFile(path string) (err error) {
+func (d *Docx) WriteToFile(path string) (err error) {
 	var target *os.File
 	target, err = os.Create(path)
 	if err != nil {
 		return
 	}
-	err = r.Write(target)
+	err = d.Write(target)
 	return
 }
 
-func (r *ReplaceDocx) Close() error {
-	return r.zipReader.Close()
-}
-
-func (r *ReplaceDocx) Write(ioWriter io.Writer) (err error) {
+func (d *Docx) Write(ioWriter io.Writer) (err error) {
 	w := zip.NewWriter(ioWriter)
-	for _, file := range r.zipReader.File {
+	for _, file := range d.files {
 		var writer io.Writer
 		var readCloser io.ReadCloser
 
@@ -60,7 +72,7 @@ func (r *ReplaceDocx) Write(ioWriter io.Writer) (err error) {
 			return err
 		}
 		if file.Name == "word/document.xml" {
-			writer.Write([]byte(r.content))
+			writer.Write([]byte(d.content))
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}

@@ -12,10 +12,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	r.Replace("<old text>", "new text", -1)
-	r.Replace("old", "new", -1)
-	r.Replace("<old>old</old>", "new", -1)
-	r.WriteToFile("./new_template.docx")
+	docx1 := r.Editable()
+	docx1.Replace("old_1_1", "new_1_1", -1)
+	docx1.Replace("old_1_2", "new_1_2", -1)
+	docx1.WriteToFile("./new_result_1.docx")
+
+	docx2 := r.Editable()
+	docx2.Replace("old_2_1", "new_2_1", -1)
+	docx2.Replace("old_2_2", "new_2_2", -1)
+	docx2.WriteToFile("./new_result_2.docx")
+
 	r.Close()
 }
 
