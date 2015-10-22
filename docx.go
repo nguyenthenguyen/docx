@@ -53,6 +53,7 @@ func (d *Docx) WriteToFile(path string) (err error) {
 	if err != nil {
 		return
 	}
+	defer target.Close()
 	err = d.Write(target)
 	return
 }
