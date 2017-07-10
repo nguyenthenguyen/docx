@@ -6,17 +6,18 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
+
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
-	"fmt"
 )
 
 type ReplaceDocx struct {
 	zipReader *zip.ReadCloser
 	content   string
+	headers   map[string]string
 	header1   string
 	header2   string
 	header3   string
@@ -26,6 +27,7 @@ func (r *ReplaceDocx) Editable() *Docx {
 	return &Docx{
 		files:   r.zipReader.File,
 		content: r.content,
+		headers: r.headers,
 		header1: r.header1,
 		header2: r.header2,
 		header3: r.header3,
@@ -39,6 +41,7 @@ func (r *ReplaceDocx) Close() error {
 type Docx struct {
 	files   []*zip.File
 	content string
+	headers map[string]string
 	header1 string
 	header2 string
 	header3 string
@@ -68,9 +71,17 @@ func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err e
 		return err
 	}
 
-	d.header1 = strings.Replace(d.content, oldString, newString, num)
-	d.header2 = strings.Replace(d.content, oldString, newString, num)
-	d.header3 = strings.Replace(d.content, oldString, newString, num)
+	for k, v := range d.headers {
+		fmt.Println("\n\n\nD.headers contains MeetingDate:", strings.Contains(v, "MeetingDate"))
+		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, num)
+		fmt.Println("D.headers contains MeetingDate:", strings.Contains(v, "MeetingDate"))
+	}
+	/*fmt.Println("D.header1 contains MeetingDate:", strings.Contains(d.header1, "MeetingDate"))
+	d.header1 = strings.Replace(d.header1, oldString, newString, num)
+	fmt.Println("D.header2 contains MeetingDate:", strings.Contains(d.header2, "MeetingDate"))
+	d.header2 = strings.Replace(d.header2, oldString, newString, num)
+	fmt.Println("D.header3 contains Meeting Date:", strings.Contains(d.header3, "MeetingDate"))
+	d.header3 = strings.Replace(d.header3, oldString, newString, num)*/
 	return nil
 }
 
@@ -98,9 +109,17 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 		readCloser, err = file.Open()
 		if err != nil {
 			return err
-		}
+		}/******************CHANGE TO REFERENCE MAP!***********************/
 		if file.Name == "word/document.xml" {
 			writer.Write([]byte(d.content))
+		} else if file.Name == "word/header1.xml" && d.header1 != "" {
+			fmt.Println("writing header 1: ", d.header1)
+			writer.Write([]byte(d.header1))
+		} else if file.Name == "word/header2.xml" && d.header2 != "" {
+			fmt.Println("writing header 2:", d.header2)
+			writer.Write([]byte(d.header2))
+		} else if file.Name == "word/header3.xml" && d.header3 != "" {
+			writer.Write([]byte(d.header3))
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}
@@ -119,20 +138,23 @@ func ReadDocxFile(path string) (*ReplaceDocx, error) {
 		return nil, err
 	}
 
+	/******************CHANGE TO REFERENCE MAP!***********************/
 	headers, _ := readHeader(reader.File)
+	fmt.Println("Headers:", headers)
 	return &ReplaceDocx{zipReader: reader, content: content, header1: headers[0], header2: headers[1], header3: headers[2]}, nil
 }
 
 func readHeader(files []*zip.File) (headerText [3]string, err error) {
-
+	/******************CHANGE TO REFERENCE MAP!***********************/
 	h, err := retrieveHeaderDoc(files)
+	fmt.Println("h:", h)
 	if err != nil {
 		return [3]string{}, err
 	}
 
 	var documentReader io.ReadCloser
+
 	for i, element := range h {
-		fmt.Println("len(headerText):", len(headerText))
 		documentReader, err = element.Open()
 		if err != nil {
 			return [3]string{}, err
@@ -142,12 +164,11 @@ func readHeader(files []*zip.File) (headerText [3]string, err error) {
 		if err != nil {
 			return [3]string{}, err
 		}
-		if text != "" {
-			headerText[i] = text
-		}
-	}
 
-	return
+		headerText[i] = text
+
+	}
+	return headerText, err
 }
 
 func readText(files []*zip.File) (text string, err error) {
@@ -186,18 +207,19 @@ func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
 	return
 }
 
-func retrieveHeaderDoc(files []*zip.File) (headers []*zip.File, err error) {
-	var h [3]*zip.File
-
-	i := 0
-	re := regexp.MustCompile(`word/header[1-3].xml`)
+func retrieveHeaderDoc(files []*zip.File) (headers [3]*zip.File, err error) {
+	/******************CHANGE TO REFERENCE MAP!***********************/
 	for _, f := range files {
-		if re.MatchString(f.Name) {
-			h[i] = f
-			i++
+
+		if f.Name == "word/header1.xml" {
+			headers[0] = f
+		} else if f.Name == "word/header2.xml" {
+			headers[1] = f
+		} else if f.Name == "word/header3.xml" {
+			headers[2] = f
 		}
 	}
-	if len(h) == 0 {
+	if len(headers) == 0 {
 		err = errors.New("headers[1-3.xml file not found")
 	}
 	return
