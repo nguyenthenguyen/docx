@@ -9,18 +9,26 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
+	"fmt"
 )
 
 type ReplaceDocx struct {
 	zipReader *zip.ReadCloser
 	content   string
+	header1   string
+	header2   string
+	header3   string
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
 	return &Docx{
 		files:   r.zipReader.File,
 		content: r.content,
+		header1: r.header1,
+		header2: r.header2,
+		header3: r.header3,
 	}
 }
 
@@ -31,6 +39,9 @@ func (r *ReplaceDocx) Close() error {
 type Docx struct {
 	files   []*zip.File
 	content string
+	header1 string
+	header2 string
+	header3 string
 }
 
 func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
@@ -44,6 +55,22 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 	}
 	d.content = strings.Replace(d.content, oldString, newString, num)
 
+	return nil
+}
+
+func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err error) {
+	oldString, err = encode(oldString)
+	if err != nil {
+		return err
+	}
+	newString, err = encode(newString)
+	if err != nil {
+		return err
+	}
+
+	d.header1 = strings.Replace(d.content, oldString, newString, num)
+	d.header2 = strings.Replace(d.content, oldString, newString, num)
+	d.header3 = strings.Replace(d.content, oldString, newString, num)
 	return nil
 }
 
@@ -92,7 +119,35 @@ func ReadDocxFile(path string) (*ReplaceDocx, error) {
 		return nil, err
 	}
 
-	return &ReplaceDocx{zipReader: reader, content: content}, nil
+	headers, _ := readHeader(reader.File)
+	return &ReplaceDocx{zipReader: reader, content: content, header1: headers[0], header2: headers[1], header3: headers[2]}, nil
+}
+
+func readHeader(files []*zip.File) (headerText [3]string, err error) {
+
+	h, err := retrieveHeaderDoc(files)
+	if err != nil {
+		return [3]string{}, err
+	}
+
+	var documentReader io.ReadCloser
+	for i, element := range h {
+		fmt.Println("len(headerText):", len(headerText))
+		documentReader, err = element.Open()
+		if err != nil {
+			return [3]string{}, err
+		}
+
+		text, err := wordDocToString(documentReader)
+		if err != nil {
+			return [3]string{}, err
+		}
+		if text != "" {
+			headerText[i] = text
+		}
+	}
+
+	return
 }
 
 func readText(files []*zip.File) (text string, err error) {
@@ -127,6 +182,23 @@ func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
 	}
 	if file == nil {
 		err = errors.New("document.xml file not found")
+	}
+	return
+}
+
+func retrieveHeaderDoc(files []*zip.File) (headers []*zip.File, err error) {
+	var h [3]*zip.File
+
+	i := 0
+	re := regexp.MustCompile(`word/header[1-3].xml`)
+	for _, f := range files {
+		if re.MatchString(f.Name) {
+			h[i] = f
+			i++
+		}
+	}
+	if len(h) == 0 {
+		err = errors.New("headers[1-3.xml file not found")
 	}
 	return
 }
