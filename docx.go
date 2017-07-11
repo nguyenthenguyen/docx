@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
-
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -18,9 +16,6 @@ type ReplaceDocx struct {
 	zipReader *zip.ReadCloser
 	content   string
 	headers   map[string]string
-	header1   string
-	header2   string
-	header3   string
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
@@ -28,9 +23,6 @@ func (r *ReplaceDocx) Editable() *Docx {
 		files:   r.zipReader.File,
 		content: r.content,
 		headers: r.headers,
-		header1: r.header1,
-		header2: r.header2,
-		header3: r.header3,
 	}
 }
 
@@ -42,9 +34,6 @@ type Docx struct {
 	files   []*zip.File
 	content string
 	headers map[string]string
-	header1 string
-	header2 string
-	header3 string
 }
 
 func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
@@ -71,17 +60,10 @@ func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err e
 		return err
 	}
 
-	for k, v := range d.headers {
-		fmt.Println("\n\n\nD.headers contains MeetingDate:", strings.Contains(v, "MeetingDate"))
+	for k, _ := range d.headers {
 		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, num)
-		fmt.Println("D.headers contains MeetingDate:", strings.Contains(v, "MeetingDate"))
 	}
-	/*fmt.Println("D.header1 contains MeetingDate:", strings.Contains(d.header1, "MeetingDate"))
-	d.header1 = strings.Replace(d.header1, oldString, newString, num)
-	fmt.Println("D.header2 contains MeetingDate:", strings.Contains(d.header2, "MeetingDate"))
-	d.header2 = strings.Replace(d.header2, oldString, newString, num)
-	fmt.Println("D.header3 contains Meeting Date:", strings.Contains(d.header3, "MeetingDate"))
-	d.header3 = strings.Replace(d.header3, oldString, newString, num)*/
+
 	return nil
 }
 
@@ -109,17 +91,11 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 		readCloser, err = file.Open()
 		if err != nil {
 			return err
-		}/******************CHANGE TO REFERENCE MAP!***********************/
+		}
 		if file.Name == "word/document.xml" {
 			writer.Write([]byte(d.content))
-		} else if file.Name == "word/header1.xml" && d.header1 != "" {
-			fmt.Println("writing header 1: ", d.header1)
-			writer.Write([]byte(d.header1))
-		} else if file.Name == "word/header2.xml" && d.header2 != "" {
-			fmt.Println("writing header 2:", d.header2)
-			writer.Write([]byte(d.header2))
-		} else if file.Name == "word/header3.xml" && d.header3 != "" {
-			writer.Write([]byte(d.header3))
+		} else if strings.Contains(file.Name, "header") && d.headers[file.Name] != "" {
+			writer.Write([]byte(d.headers[file.Name]))
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}
@@ -138,34 +114,32 @@ func ReadDocxFile(path string) (*ReplaceDocx, error) {
 		return nil, err
 	}
 
-	/******************CHANGE TO REFERENCE MAP!***********************/
 	headers, _ := readHeader(reader.File)
-	fmt.Println("Headers:", headers)
-	return &ReplaceDocx{zipReader: reader, content: content, header1: headers[0], header2: headers[1], header3: headers[2]}, nil
+	return &ReplaceDocx{zipReader: reader, content: content, headers: headers}, nil
 }
 
-func readHeader(files []*zip.File) (headerText [3]string, err error) {
-	/******************CHANGE TO REFERENCE MAP!***********************/
+func readHeader(files []*zip.File) (headerText map[string]string, err error) {
+
 	h, err := retrieveHeaderDoc(files)
-	fmt.Println("h:", h)
+
 	if err != nil {
-		return [3]string{}, err
+		return map[string]string{}, err
 	}
 
 	var documentReader io.ReadCloser
-
-	for i, element := range h {
+	headerText = make(map[string] string)
+	for _, element := range h {
 		documentReader, err = element.Open()
 		if err != nil {
-			return [3]string{}, err
+			return map[string]string{}, err
 		}
 
 		text, err := wordDocToString(documentReader)
 		if err != nil {
-			return [3]string{}, err
+			return map[string]string{}, err
 		}
 
-		headerText[i] = text
+		headerText[element.Name] = text
 
 	}
 	return headerText, err
@@ -207,16 +181,11 @@ func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
 	return
 }
 
-func retrieveHeaderDoc(files []*zip.File) (headers [3]*zip.File, err error) {
-	/******************CHANGE TO REFERENCE MAP!***********************/
+func retrieveHeaderDoc(files []*zip.File) (headers []*zip.File, err error) {
 	for _, f := range files {
 
-		if f.Name == "word/header1.xml" {
-			headers[0] = f
-		} else if f.Name == "word/header2.xml" {
-			headers[1] = f
-		} else if f.Name == "word/header3.xml" {
-			headers[2] = f
+		if strings.Contains(f.Name, "header") {
+			headers = append(headers, f)
 		}
 	}
 	if len(headers) == 0 {
