@@ -50,7 +50,7 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 	return nil
 }
 
-func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err error) {
+func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
 	oldString, err = encode(oldString)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err e
 	}
 
 	for k, _ := range d.headers {
-		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, num)
+		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, -1)
 	}
 
 	return nil
