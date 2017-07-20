@@ -50,7 +50,7 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 	return nil
 }
 
-func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
+func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err error) {
 	oldString, err = encode(oldString)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
 	}
 
 	for k, _ := range d.headers {
-		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, -1)
+		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, num)
 	}
 
 	return nil
@@ -127,7 +127,7 @@ func readHeader(files []*zip.File) (headerText map[string]string, err error) {
 	}
 
 	var documentReader io.ReadCloser
-	headerText = make(map[string] string)
+	headerText = make(map[string]string)
 	for _, element := range h {
 		documentReader, err = element.Open()
 		if err != nil {

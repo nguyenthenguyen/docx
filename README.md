@@ -13,6 +13,7 @@ func main() {
 		panic(err)
 	}
 	docx1 := r.Editable()
+	// Replace like https://golang.org/pkg/strings/#Replace
 	docx1.Replace("old_1_1", "new_1_1", -1)
 	docx1.Replace("old_1_2", "new_1_2", -1)
 	docx1.ReplaceHeader("out with the old", "in with the new")
