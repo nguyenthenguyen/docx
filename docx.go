@@ -15,12 +15,14 @@ import (
 type ReplaceDocx struct {
 	zipReader *zip.ReadCloser
 	content   string
+	headers   map[string]string
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
 	return &Docx{
 		files:   r.zipReader.File,
 		content: r.content,
+		headers: r.headers,
 	}
 }
 
@@ -31,6 +33,7 @@ func (r *ReplaceDocx) Close() error {
 type Docx struct {
 	files   []*zip.File
 	content string
+	headers map[string]string
 }
 
 func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
@@ -43,6 +46,23 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 		return err
 	}
 	d.content = strings.Replace(d.content, oldString, newString, num)
+
+	return nil
+}
+
+func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
+	oldString, err = encode(oldString)
+	if err != nil {
+		return err
+	}
+	newString, err = encode(newString)
+	if err != nil {
+		return err
+	}
+
+	for k, _ := range d.headers {
+		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, -1)
+	}
 
 	return nil
 }
@@ -74,6 +94,8 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 		}
 		if file.Name == "word/document.xml" {
 			writer.Write([]byte(d.content))
+		} else if strings.Contains(file.Name, "header") && d.headers[file.Name] != "" {
+			writer.Write([]byte(d.headers[file.Name]))
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}
@@ -92,7 +114,35 @@ func ReadDocxFile(path string) (*ReplaceDocx, error) {
 		return nil, err
 	}
 
-	return &ReplaceDocx{zipReader: reader, content: content}, nil
+	headers, _ := readHeader(reader.File)
+	return &ReplaceDocx{zipReader: reader, content: content, headers: headers}, nil
+}
+
+func readHeader(files []*zip.File) (headerText map[string]string, err error) {
+
+	h, err := retrieveHeaderDoc(files)
+
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	var documentReader io.ReadCloser
+	headerText = make(map[string] string)
+	for _, element := range h {
+		documentReader, err = element.Open()
+		if err != nil {
+			return map[string]string{}, err
+		}
+
+		text, err := wordDocToString(documentReader)
+		if err != nil {
+			return map[string]string{}, err
+		}
+
+		headerText[element.Name] = text
+
+	}
+	return headerText, err
 }
 
 func readText(files []*zip.File) (text string, err error) {
@@ -127,6 +177,19 @@ func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
 	}
 	if file == nil {
 		err = errors.New("document.xml file not found")
+	}
+	return
+}
+
+func retrieveHeaderDoc(files []*zip.File) (headers []*zip.File, err error) {
+	for _, f := range files {
+
+		if strings.Contains(f.Name, "header") {
+			headers = append(headers, f)
+		}
+	}
+	if len(headers) == 0 {
+		err = errors.New("headers[1-3.xml file not found")
 	}
 	return
 }
