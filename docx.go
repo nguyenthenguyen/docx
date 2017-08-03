@@ -54,28 +54,11 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 }
 
 func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
-	return d.replaceHeaderFooter(d.headers, oldString, newString)
+	return replaceHeaderFooter(d.headers, oldString, newString)
 }
 
 func (d *Docx) ReplaceFooter(oldString string, newString string) (err error) {
-	return d.replaceHeaderFooter(d.footers, oldString, newString)
-}
-
-func (d *Docx) replaceHeaderFooter(headerFooter map[string]string, oldString string, newString string) (err error) {
-	oldString, err = encode(oldString)
-	if err != nil {
-		return err
-	}
-	newString, err = encode(newString)
-	if err != nil {
-		return err
-	}
-
-	for k, _ := range headerFooter {
-		headerFooter[k] = strings.Replace(headerFooter[k], oldString, newString, -1)
-	}
-
-	return nil
+	return replaceHeaderFooter(d.footers, oldString, newString)
 }
 
 func (d *Docx) WriteToFile(path string) (err error) {
@@ -115,6 +98,23 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 	}
 	w.Close()
 	return
+}
+
+func replaceHeaderFooter(headerFooter map[string]string, oldString string, newString string) (err error) {
+	oldString, err = encode(oldString)
+	if err != nil {
+		return err
+	}
+	newString, err = encode(newString)
+	if err != nil {
+		return err
+	}
+
+	for k, _ := range headerFooter {
+		headerFooter[k] = strings.Replace(headerFooter[k], oldString, newString, -1)
+	}
+
+	return nil
 }
 
 func ReadDocxFile(path string) (*ReplaceDocx, error) {

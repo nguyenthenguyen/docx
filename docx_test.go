@@ -1,8 +1,8 @@
 package docx
 
 import (
-	"testing"
 	"strings"
+	"testing"
 )
 
 const testFile = "./TestDocument.docx"
@@ -80,4 +80,3 @@ func TestReplaceFooter(t *testing.T) {
 		t.Error("Expected 'newFooter', got ", d.headers)
 	}
 }
-
