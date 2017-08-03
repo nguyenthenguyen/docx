@@ -16,6 +16,7 @@ type ReplaceDocx struct {
 	zipReader *zip.ReadCloser
 	content   string
 	headers   map[string]string
+	footers   map[string]string
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
@@ -23,6 +24,7 @@ func (r *ReplaceDocx) Editable() *Docx {
 		files:   r.zipReader.File,
 		content: r.content,
 		headers: r.headers,
+		footers: r.footers,
 	}
 }
 
@@ -34,6 +36,7 @@ type Docx struct {
 	files   []*zip.File
 	content string
 	headers map[string]string
+	footers map[string]string
 }
 
 func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
@@ -50,21 +53,12 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 	return nil
 }
 
-func (d *Docx) ReplaceHeader(oldString string, newString string, num int) (err error) {
-	oldString, err = encode(oldString)
-	if err != nil {
-		return err
-	}
-	newString, err = encode(newString)
-	if err != nil {
-		return err
-	}
+func (d *Docx) ReplaceHeader(oldString string, newString string) (err error) {
+	return replaceHeaderFooter(d.headers, oldString, newString)
+}
 
-	for k, _ := range d.headers {
-		d.headers[k] = strings.Replace(d.headers[k], oldString, newString, num)
-	}
-
-	return nil
+func (d *Docx) ReplaceFooter(oldString string, newString string) (err error) {
+	return replaceHeaderFooter(d.footers, oldString, newString)
 }
 
 func (d *Docx) WriteToFile(path string) (err error) {
@@ -96,12 +90,31 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 			writer.Write([]byte(d.content))
 		} else if strings.Contains(file.Name, "header") && d.headers[file.Name] != "" {
 			writer.Write([]byte(d.headers[file.Name]))
+		} else if strings.Contains(file.Name, "footer") && d.footers[file.Name] != "" {
+			writer.Write([]byte(d.footers[file.Name]))
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}
 	}
 	w.Close()
 	return
+}
+
+func replaceHeaderFooter(headerFooter map[string]string, oldString string, newString string) (err error) {
+	oldString, err = encode(oldString)
+	if err != nil {
+		return err
+	}
+	newString, err = encode(newString)
+	if err != nil {
+		return err
+	}
+
+	for k, _ := range headerFooter {
+		headerFooter[k] = strings.Replace(headerFooter[k], oldString, newString, -1)
+	}
+
+	return nil
 }
 
 func ReadDocxFile(path string) (*ReplaceDocx, error) {
@@ -114,22 +127,36 @@ func ReadDocxFile(path string) (*ReplaceDocx, error) {
 		return nil, err
 	}
 
-	headers, _ := readHeader(reader.File)
-	return &ReplaceDocx{zipReader: reader, content: content, headers: headers}, nil
+	headers, footers, _ := readHeaderFooter(reader.File)
+	return &ReplaceDocx{zipReader: reader, content: content, headers: headers, footers: footers}, nil
 }
 
-func readHeader(files []*zip.File) (headerText map[string]string, err error) {
+func readHeaderFooter(files []*zip.File) (headerText map[string]string, footerText map[string]string, err error) {
 
-	h, err := retrieveHeaderDoc(files)
+	h, f, err := retrieveHeaderFooterDoc(files)
 
 	if err != nil {
-		return map[string]string{}, err
+		return map[string]string{}, map[string]string{}, err
 	}
 
-	var documentReader io.ReadCloser
-	headerText = make(map[string]string)
-	for _, element := range h {
-		documentReader, err = element.Open()
+	headerText, err = buildHeaderFooter(h)
+	if err != nil {
+		return map[string]string{}, map[string]string{}, err
+	}
+
+	footerText, err = buildHeaderFooter(f)
+	if err != nil {
+		return map[string]string{}, map[string]string{}, err
+	}
+
+	return headerText, footerText, err
+}
+
+func buildHeaderFooter(headerFooter []*zip.File) (map[string]string, error) {
+
+	headerFooterText := make(map[string]string)
+	for _, element := range headerFooter {
+		documentReader, err := element.Open()
 		if err != nil {
 			return map[string]string{}, err
 		}
@@ -139,10 +166,10 @@ func readHeader(files []*zip.File) (headerText map[string]string, err error) {
 			return map[string]string{}, err
 		}
 
-		headerText[element.Name] = text
-
+		headerFooterText[element.Name] = text
 	}
-	return headerText, err
+
+	return headerFooterText, nil
 }
 
 func readText(files []*zip.File) (text string, err error) {
@@ -181,15 +208,18 @@ func retrieveWordDoc(files []*zip.File) (file *zip.File, err error) {
 	return
 }
 
-func retrieveHeaderDoc(files []*zip.File) (headers []*zip.File, err error) {
+func retrieveHeaderFooterDoc(files []*zip.File) (headers []*zip.File, footers []*zip.File, err error) {
 	for _, f := range files {
 
 		if strings.Contains(f.Name, "header") {
 			headers = append(headers, f)
 		}
+		if strings.Contains(f.Name, "footer") {
+			footers = append(footers, f)
+		}
 	}
-	if len(headers) == 0 {
-		err = errors.New("headers[1-3.xml file not found")
+	if len(headers) == 0 && len(footers) == 0 {
+		err = errors.New("headers[1-3].xml file not found and footers[1-3].xml file not found.")
 	}
 	return
 }
