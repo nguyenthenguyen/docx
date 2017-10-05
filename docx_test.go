@@ -34,6 +34,23 @@ func TestReplace(t *testing.T) {
 	}
 
 }
+
+func TestReplaceLink(t *testing.T) {
+	d := loadFile(testFile)
+	d.ReplaceLink("http://example.com/", "https://github.com/nguyenthenguyen/docx", -1)
+	d.WriteToFile(testFileResult)
+
+	d = loadFile(testFileResult)
+
+	if strings.Contains(d.links, "http://example.com") {
+		t.Error("Missing 'http://example.com', got ", d.links)
+	}
+
+	if !strings.Contains(d.links, "https://github.com/nguyenthenguyen/docx") {
+		t.Error("Expected 'word', got ", d.links)
+	}
+}
+
 func TestReplaceHeader(t *testing.T) {
 	d := loadFile(testFile)
 	d.ReplaceHeader("This is a header.", "newHeader")
