@@ -15,24 +15,22 @@ func loadFile(file string) *Docx {
 	}
 
 	return r.Editable()
-
 }
 
 func TestReplace(t *testing.T) {
 	d := loadFile(testFile)
-	d.Replace("This is a word document.", "word", 1)
+	d.Replace("document.", "line1\r\nline2", 1)
 	d.WriteToFile(testFileResult)
 
 	d = loadFile(testFileResult)
 
 	if strings.Contains(d.content, "This is a word document") {
-		t.Error("Missing 'This is a word doucument.', got ", d.content)
+		t.Error("Missing 'This is a word document.', got ", d.content)
 	}
 
-	if !strings.Contains(d.content, "word") {
-		t.Error("Expected 'word', got ", d.content)
+	if !strings.Contains(d.content, "line1<w:br/>line2") {
+		t.Error("Expected 'line1<w:br/>line2', got ", d.content)
 	}
-
 }
 
 func TestReplaceLink(t *testing.T) {
@@ -72,7 +70,6 @@ func TestReplaceHeader(t *testing.T) {
 	if !found {
 		t.Error("Expected 'newHeader', got ", d.headers)
 	}
-
 }
 
 func TestReplaceFooter(t *testing.T) {

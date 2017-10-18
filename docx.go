@@ -282,11 +282,15 @@ func streamToByte(stream io.Reader) []byte {
 	return buf.Bytes()
 }
 
+
 func encode(s string) (string, error) {
 	var b bytes.Buffer
 	enc := xml.NewEncoder(bufio.NewWriter(&b))
 	if err := enc.Encode(s); err != nil {
 		return s, err
 	}
-	return strings.Replace(strings.Replace(b.String(), "<string>", "", 1), "</string>", "", 1), nil
+	output := strings.Replace(b.String(), "<string>", "", 1) // remove string tag
+	output = strings.Replace(output, "</string>", "", 1)
+	output = strings.Replace(output, "&#xD;&#xA;", "<w:br/>", -1) // \r\n => newline
+	return output, nil
 }
