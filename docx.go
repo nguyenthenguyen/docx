@@ -42,6 +42,10 @@ type Docx struct {
 	footers map[string]string
 }
 
+func (d *Docx) ReplaceRaw(oldString string, newString string, num int) {
+       d.content = strings.Replace(d.content, oldString, newString, num)
+}
+
 func (d *Docx) Replace(oldString string, newString string, num int) (err error) {
 	oldString, err = encode(oldString)
 	if err != nil {
