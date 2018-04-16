@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
+	// Read from docx file
 	r, err := docx.ReadDocxFile("./template.docx")
+	// Or read from memory
+	// r, err := docx.ReadDocxFromMemory(data io.ReaderAt, size int64)
 	if err != nil {
 		panic(err)
 	}
@@ -25,6 +28,9 @@ func main() {
 	docx2.Replace("old_2_1", "new_2_1", -1)
 	docx2.Replace("old_2_2", "new_2_2", -1)
 	docx2.WriteToFile("./new_result_2.docx")
+
+	// Or write to ioWriter
+	// docx2.Write(ioWriter io.Writer)
 
 	r.Close()
 }
