@@ -1,6 +1,8 @@
 package docx
 
 import (
+	"bytes"
+	"io/ioutil"
 	"strings"
 	"testing"
 )
@@ -15,6 +17,34 @@ func loadFile(file string) *Docx {
 	}
 
 	return r.Editable()
+}
+
+func loadFromMemory(file string) *Docx {
+	data, err := ioutil.ReadFile(file)
+	r, err := ReadDocxFromMemory(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		panic(err)
+	}
+
+	return r.Editable()
+}
+
+//Tests that we are able to load a file from a memory array of bytes and do a quick replacement test
+func TestReadDocxFromMemory(t *testing.T) {
+	d := loadFromMemory(testFile)
+
+	if d == nil {
+		t.Error("Doc should not be nill', got ", d)
+	}
+	d.Replace("document.", "line1\r\nline2", 1)
+	d.WriteToFile(testFileResult)
+
+	d = loadFile(testFileResult)
+
+	if strings.Contains(d.content, "This is a word document") {
+		t.Error("Missing 'This is a word document.', got ", d.content)
+	}
+
 }
 
 func TestReplace(t *testing.T) {
