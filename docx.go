@@ -76,6 +76,14 @@ type Docx struct {
 	footers map[string]string
 }
 
+func (d *Docx) GetContent() string {
+	return d.content
+}
+
+func (d *Docx) SetContent(content string) {
+	d.content = content
+}
+
 func (d *Docx) ReplaceRaw(oldString string, newString string, num int) {
 	d.content = strings.Replace(d.content, oldString, newString, num)
 }
