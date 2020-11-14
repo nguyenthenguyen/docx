@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/valyala/fasttemplate"
 )
 
 //Contains functions to work with data from a zip file
@@ -98,6 +100,15 @@ func (d *Docx) Replace(oldString string, newString string, num int) (err error) 
 		return err
 	}
 	d.content = strings.Replace(d.content, oldString, newString, num)
+
+	return nil
+}
+
+func (d *Docx) ReplaceData(data map[string]interface{}) (err error) {
+	template := d.content
+	t := fasttemplate.New(template, "{{", "}}")
+	// TODO: Encode the values in the data map
+	d.content = t.ExecuteString(data)
 
 	return nil
 }
