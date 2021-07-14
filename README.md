@@ -1,4 +1,4 @@
-## Simple Google Go (golang) library for replace text in microsoft word (.docx) file
+## Simple Google Go (Golang) library for replacing text in Microsoft Word (.docx) file
 
 The following constitutes the bare minimum required to replace text in DOCX document.
 ``` go
