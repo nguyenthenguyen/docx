@@ -1,7 +1,9 @@
 package docx
 
 import (
+	"archive/zip"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -20,7 +22,7 @@ func loadFile(file string) *Docx {
 }
 
 func loadFromMemory(file string) *Docx {
-	data, err := ioutil.ReadFile(file)
+	data, _ := ioutil.ReadFile(file)
 	r, err := ReadDocxFromMemory(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		panic(err)
@@ -48,19 +50,44 @@ func TestReadDocxFromMemory(t *testing.T) {
 }
 
 func TestReplace(t *testing.T) {
-	d := loadFile(testFile)
-	d.Replace("document.", "line1\r\nline2", 1)
-	d.WriteToFile(testFileResult)
-
-	d = loadFile(testFileResult)
-
-	if strings.Contains(d.content, "This is a word document") {
-		t.Error("Missing 'This is a word document.', got ", d.content)
+	tests := []struct {
+		name        string
+		replaceWith string
+		expect      string
+	}{
+		{"Windows line breaks", "line1\r\nline2", "line1<w:br/>line2"},
+		{"Mac line breaks", "line1\rline2", "line1<w:br/>line2"},
+		{"Linux line breaks", "line1\nline2", "line1<w:br/>line2"},
+		{"Tabs", "line1\tline2", "line1</w:t><w:tab/><w:t>line2"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := loadFile(testFile)
+			previous := d.content
+			d.Replace("document.", tt.replaceWith, 1)
+			d.WriteToFile(testFileResult)
 
-	if !strings.Contains(d.content, "line1<w:br/>line2") {
-		t.Error("Expected 'line1<w:br/>line2', got ", d.content)
+			d = loadFile(testFileResult)
+
+			if strings.Contains(d.content, "This is a word document") {
+				t.Error("Should not contain 'This is a word document' after replacement, got ", d.content)
+			}
+
+			// These are arbitrary start and end points that should include the part that's being replaced, plus a bit extra
+			start := 1200
+			end := 1450
+
+			if !strings.Contains(d.content, tt.expect) {
+				t.Errorf("Expected '%s'\n previous: \n%s\n got: \n%s", tt.expect, extractMiddle(start, end, previous), extractMiddle(start, end, d.content))
+			}
+		})
 	}
+}
+
+// To make test failure messages easier to read, trim off the beginning and end of the document to focus on the part expected
+// to have changed
+func extractMiddle(start, end int, content string) string {
+	return fmt.Sprint(content[start:end])
 }
 
 func TestReplaceLink(t *testing.T) {
@@ -122,5 +149,39 @@ func TestReplaceFooter(t *testing.T) {
 	}
 	if !found {
 		t.Error("Expected 'newFooter', got ", d.headers)
+	}
+}
+
+func TestDocx_ReplaceRaw(t *testing.T) {
+	type fields struct {
+		files   []*zip.File
+		content string
+		links   string
+		headers map[string]string
+		footers map[string]string
+	}
+	type args struct {
+		oldString string
+		newString string
+		num       int
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Docx{
+				files:   tt.fields.files,
+				content: tt.fields.content,
+				links:   tt.fields.links,
+				headers: tt.fields.headers,
+				footers: tt.fields.footers,
+			}
+			d.ReplaceRaw(tt.args.oldString, tt.args.newString, tt.args.num)
+		})
 	}
 }
