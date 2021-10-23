@@ -1,7 +1,6 @@
 package docx
 
 import (
-	"archive/zip"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -149,39 +148,5 @@ func TestReplaceFooter(t *testing.T) {
 	}
 	if !found {
 		t.Error("Expected 'newFooter', got ", d.headers)
-	}
-}
-
-func TestDocx_ReplaceRaw(t *testing.T) {
-	type fields struct {
-		files   []*zip.File
-		content string
-		links   string
-		headers map[string]string
-		footers map[string]string
-	}
-	type args struct {
-		oldString string
-		newString string
-		num       int
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &Docx{
-				files:   tt.fields.files,
-				content: tt.fields.content,
-				links:   tt.fields.links,
-				headers: tt.fields.headers,
-				footers: tt.fields.footers,
-			}
-			d.ReplaceRaw(tt.args.oldString, tt.args.newString, tt.args.num)
-		})
 	}
 }
