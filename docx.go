@@ -331,7 +331,7 @@ func retrieveHeaderFooterDoc(files []*zip.File) (headers []*zip.File, footers []
 		}
 	}
 	if len(headers) == 0 && len(footers) == 0 {
-		err = errors.New("headers[1-3].xml file not found and footers[1-3].xml file not found.")
+		err = errors.New("headers[1-3].xml file not found and footers[1-3].xml file not found")
 	}
 	return
 }
@@ -342,6 +342,13 @@ func streamToByte(stream io.Reader) []byte {
 	return buf.Bytes()
 }
 
+// To get Word to recognize a tab character, we have to first close off the previous
+// text element.  This means if there are multiple consecutive tabs, there are empty <w:t></w:t>
+// in between but it still seems to work correctly in the output document, certainly better
+// than other combinations I tried.
+const TAB = "</w:t><w:tab/><w:t>"
+const NEWLINE = "<w:br/>"
+
 func encode(s string) (string, error) {
 	var b bytes.Buffer
 	enc := xml.NewEncoder(bufio.NewWriter(&b))
@@ -350,6 +357,9 @@ func encode(s string) (string, error) {
 	}
 	output := strings.Replace(b.String(), "<string>", "", 1) // remove string tag
 	output = strings.Replace(output, "</string>", "", 1)
-	output = strings.Replace(output, "&#xD;&#xA;", "<w:br/>", -1) // \r\n => newline
+	output = strings.Replace(output, "&#xD;&#xA;", NEWLINE, -1) // \r\n (Windows newline)
+	output = strings.Replace(output, "&#xD;", NEWLINE, -1)      // \r (earlier Mac newline)
+	output = strings.Replace(output, "&#xA;", NEWLINE, -1)      // \n (unix/linux/OS X newline)
+	output = strings.Replace(output, "&#x9;", TAB, -1)          // \t (tab)
 	return output, nil
 }
