@@ -1,3 +1,3 @@
-module github.com/cobaltspeech/docx
+module github.com/nguyenthenguyen/docx
 
 go 1.16
