@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -52,6 +53,7 @@ type ReplaceDocx struct {
 	links     string
 	headers   map[string]string
 	footers   map[string]string
+	images    map[string]string
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
@@ -61,6 +63,7 @@ func (r *ReplaceDocx) Editable() *Docx {
 		links:   r.links,
 		headers: r.headers,
 		footers: r.footers,
+		images:  r.images,
 	}
 }
 
@@ -74,6 +77,7 @@ type Docx struct {
 	links   string
 	headers map[string]string
 	footers map[string]string
+	images  map[string]string
 }
 
 func (d *Docx) GetContent() string {
@@ -157,6 +161,13 @@ func (d *Docx) Write(ioWriter io.Writer) (err error) {
 			writer.Write([]byte(d.headers[file.Name]))
 		} else if strings.Contains(file.Name, "footer") && d.footers[file.Name] != "" {
 			writer.Write([]byte(d.footers[file.Name]))
+		} else if strings.HasPrefix(file.Name, "word/media/") && d.images[file.Name] != "" {
+			newImage, err := os.Open(d.images[file.Name])
+			if err != nil {
+				return err
+			}
+			writer.Write(streamToByte(newImage))
+			newImage.Close()
 		} else {
 			writer.Write(streamToByte(readCloser))
 		}
@@ -212,7 +223,18 @@ func ReadDocx(reader ZipData) (*ReplaceDocx, error) {
 	}
 
 	headers, footers, _ := readHeaderFooter(reader.files())
-	return &ReplaceDocx{zipReader: reader, content: content, links: links, headers: headers, footers: footers}, nil
+	images, _ := retrieveImageFilenames(reader.files())
+	return &ReplaceDocx{zipReader: reader, content: content, links: links, headers: headers, footers: footers, images: images}, nil
+}
+
+func retrieveImageFilenames(files []*zip.File) (map[string]string, error) {
+	images := make(map[string]string)
+	for _, f := range files {
+		if strings.HasPrefix(f.Name, "word/media/") {
+			images[f.Name] = ""
+		}
+	}
+	return images, nil
 }
 
 func readHeaderFooter(files []*zip.File) (headerText map[string]string, footerText map[string]string, err error) {
@@ -362,4 +384,12 @@ func encode(s string) (string, error) {
 	output = strings.Replace(output, "&#xA;", NEWLINE, -1)      // \n (unix/linux/OS X newline)
 	output = strings.Replace(output, "&#x9;", TAB, -1)          // \t (tab)
 	return output, nil
+}
+
+func (d *Docx) ReplaceImage(oldImage string, newImage string) (err error) {
+	if _, ok := d.images[oldImage]; ok {
+		d.images[oldImage] = newImage
+		return nil
+	}
+	return fmt.Errorf("old image: %q, file not found", oldImage)
 }

@@ -150,3 +150,24 @@ func TestReplaceFooter(t *testing.T) {
 		t.Error("Expected 'newFooter', got ", d.headers)
 	}
 }
+
+func TestReplaceImage(t *testing.T) {
+	d := loadFile(testFile)
+	d.ReplaceImage("word/media/image1.png", "./new.png")
+	d.WriteToFile(testFileResult)
+
+	d = loadFile(testFileResult)
+
+	images := d.images
+
+	found := false
+	for k, _ := range images {
+		if k == "word/media/image1.png" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Expected an 'word/media/image1.png', got something else")
+	}
+
+}
