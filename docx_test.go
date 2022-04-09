@@ -161,7 +161,7 @@ func TestReplaceImage(t *testing.T) {
 	images := d.images
 
 	found := false
-	for k, _ := range images {
+	for k := range images {
 		if k == "word/media/image1.png" {
 			found = true
 		}
