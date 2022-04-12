@@ -12,6 +12,10 @@ func main() {
 	r, err := docx.ReadDocxFile("./template.docx")
 	// Or read from memory
 	// r, err := docx.ReadDocxFromMemory(data io.ReaderAt, size int64)
+	
+	// Or read from a filesystem object:
+	// r, err := docx.ReadDocxFromFS(file string, fs fs.FS)
+	
 	if err != nil {
 		panic(err)
 	}
