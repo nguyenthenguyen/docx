@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -180,6 +181,21 @@ func replaceHeaderFooter(headerFooter map[string]string, oldString string, newSt
 	}
 
 	return nil
+}
+
+//ReadDocxFromFS opens a docx file from the file system
+func ReadDocxFromFS(file string, fs fs.FS) (*ReplaceDocx, error) {
+	f, err := fs.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	buff := bytes.NewBuffer([]byte{})
+	size, err := io.Copy(buff, f)
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(buff.Bytes())
+	return ReadDocxFromMemory(reader, size)
 }
 
 func ReadDocxFromMemory(data io.ReaderAt, size int64) (*ReplaceDocx, error) {

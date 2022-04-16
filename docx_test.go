@@ -2,6 +2,7 @@ package docx
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -30,12 +31,33 @@ func loadFromMemory(file string) *Docx {
 	return r.Editable()
 }
 
-//Tests that we are able to load a file from a memory array of bytes and do a quick replacement test
+//go:embed TestDocument.docx
+var testFS embed.FS
+
+func loadFromFs(file string) *Docx {
+	r, err := ReadDocxFromFS(strings.TrimPrefix(file, "./"), testFS)
+	if err != nil {
+		panic(err)
+	}
+
+	return r.Editable()
+}
+
+//Tests that we are able to load a file from a filesystem and do a quick replacement test
+func TestReadDocxFromFS(t *testing.T) {
+	d := loadFromFs(testFile)
+	simpleReplacementTest(d, t)
+}
+
+//Tests that we are able to load a file from a memory array of bytes
 func TestReadDocxFromMemory(t *testing.T) {
 	d := loadFromMemory(testFile)
+	simpleReplacementTest(d, t)
+}
 
+func simpleReplacementTest(d *Docx, t *testing.T) {
 	if d == nil {
-		t.Error("Doc should not be nill', got ", d)
+		t.Error("Doc should not be nil', got ", d)
 	}
 	d.Replace("document.", "line1\r\nline2", 1)
 	d.WriteToFile(testFileResult)
@@ -45,7 +67,6 @@ func TestReadDocxFromMemory(t *testing.T) {
 	if strings.Contains(d.content, "This is a word document") {
 		t.Error("Missing 'This is a word document.', got ", d.content)
 	}
-
 }
 
 func TestReplace(t *testing.T) {
