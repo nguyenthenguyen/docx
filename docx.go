@@ -409,3 +409,7 @@ func (d *Docx) ReplaceImage(oldImage string, newImage string) (err error) {
 	}
 	return fmt.Errorf("old image: %q, file not found", oldImage)
 }
+
+func (d *Docx) ImagesLen() int {
+	return len(d.images)
+}

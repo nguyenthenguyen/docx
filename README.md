@@ -40,6 +40,10 @@ func main() {
 	//Currently only swaps apples for apples i.e. png to png, and not png to jpeg etc.
 	d.ReplaceImage("word/media/image1.png", "./new.png")
 	docx3.WriteToFile("./new_result_3.docx")
+	
+	// replace the last image
+	imageIndex := docxRaw.ImagesLen()
+	d.ReplaceImage("word/media/image" strconv.Itoa(imageIndex) + ".png", "./new.png")
 
 	r.Close()
 }

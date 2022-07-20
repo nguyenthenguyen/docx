@@ -192,3 +192,11 @@ func TestReplaceImage(t *testing.T) {
 	}
 
 }
+
+func TestDocx_ImagesLen(t *testing.T) {
+	d := loadFile(testFile)
+
+	if d.ImagesLen() != 1 {
+		t.Error("Expected the sum of images is 1, got something else")
+	}
+}
