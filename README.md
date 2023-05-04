@@ -35,15 +35,17 @@ func main() {
 
 	// Or write to ioWriter
 	// docx2.Write(ioWriter io.Writer)
-
+	
 	docx3 := r.Editable()
 	//Currently only swaps apples for apples i.e. png to png, and not png to jpeg etc.
-	d.ReplaceImage("word/media/image1.png", "./new.png")
+	docx3.ReplaceImage("word/media/image1.png", "./new.png")
 	docx3.WriteToFile("./new_result_3.docx")
-	
+
+	docx4 := r.Editable()
 	// replace the last image
-	imageIndex := docxRaw.ImagesLen()
-	d.ReplaceImage("word/media/image" strconv.Itoa(imageIndex) + ".png", "./new.png")
+	imageIndex := docx4.ImagesLen()
+	docx4.ReplaceImage("word/media/image"+strconv.Itoa(imageIndex)+".png", "./new.png")
+	docx4.WriteToFile("./new_result_4.docx")
 
 	r.Close()
 }
