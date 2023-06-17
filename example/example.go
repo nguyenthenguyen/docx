@@ -1,8 +1,3 @@
-## Simple Google Go (Golang) library for replacing text in Microsoft Word (.docx) file
-
-The following constitutes the bare minimum required to replace text in DOCX document.
-``` go
-
 package main
 
 import (
@@ -11,7 +6,10 @@ import (
 	"github.com/nguyenthenguyen/docx"
 )
 
+// Note - this sample code does not perform error checking, etc.
+
 func main() {
+
 	// Read from docx file
 	r, err := docx.ReadDocxFile("./TestDocument.docx")
 	// Or read from memory
@@ -51,5 +49,3 @@ func main() {
 
 	r.Close()
 }
-
-```
