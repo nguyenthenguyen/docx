@@ -7,6 +7,8 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -14,13 +16,13 @@ import (
 	"strings"
 )
 
-//Contains functions to work with data from a zip file
+// Contains functions to work with data from a zip file
 type ZipData interface {
 	files() []*zip.File
 	close() error
 }
 
-//Type for in memory zip files
+// Type for in memory zip files
 type ZipInMemory struct {
 	data *zip.Reader
 }
@@ -29,13 +31,13 @@ func (d ZipInMemory) files() []*zip.File {
 	return d.data.File
 }
 
-//Since there is nothing to close for in memory, just nil the data and return nil
+// Since there is nothing to close for in memory, just nil the data and return nil
 func (d ZipInMemory) close() error {
 	d.data = nil
 	return nil
 }
 
-//Type for zip files read from disk
+// Type for zip files read from disk
 type ZipFile struct {
 	data *zip.ReadCloser
 }
@@ -49,22 +51,24 @@ func (d ZipFile) close() error {
 }
 
 type ReplaceDocx struct {
-	zipReader ZipData
-	content   string
-	links     string
-	headers   map[string]string
-	footers   map[string]string
-	images    map[string]string
+	zipReader   ZipData
+	content     string
+	links       string
+	headers     map[string]string
+	footers     map[string]string
+	images      map[string]string
+	imagesSizes map[string]image.Config
 }
 
 func (r *ReplaceDocx) Editable() *Docx {
 	return &Docx{
-		files:   r.zipReader.files(),
-		content: r.content,
-		links:   r.links,
-		headers: r.headers,
-		footers: r.footers,
-		images:  r.images,
+		files:       r.zipReader.files(),
+		content:     r.content,
+		links:       r.links,
+		headers:     r.headers,
+		footers:     r.footers,
+		images:      r.images,
+		imagesSizes: r.imagesSizes,
 	}
 }
 
@@ -73,12 +77,13 @@ func (r *ReplaceDocx) Close() error {
 }
 
 type Docx struct {
-	files   []*zip.File
-	content string
-	links   string
-	headers map[string]string
-	footers map[string]string
-	images  map[string]string
+	files       []*zip.File
+	content     string
+	links       string
+	headers     map[string]string
+	footers     map[string]string
+	images      map[string]string
+	imagesSizes map[string]image.Config
 }
 
 func (d *Docx) GetContent() string {
@@ -194,7 +199,7 @@ func replaceHeaderFooter(headerFooter map[string]string, oldString string, newSt
 	return nil
 }
 
-//ReadDocxFromFS opens a docx file from the file system
+// ReadDocxFromFS opens a docx file from the file system
 func ReadDocxFromFS(file string, fs fs.FS) (*ReplaceDocx, error) {
 	f, err := fs.Open(file)
 	if err != nil {
@@ -240,7 +245,8 @@ func ReadDocx(reader ZipData) (*ReplaceDocx, error) {
 
 	headers, footers, _ := readHeaderFooter(reader.files())
 	images, _ := retrieveImageFilenames(reader.files())
-	return &ReplaceDocx{zipReader: reader, content: content, links: links, headers: headers, footers: footers, images: images}, nil
+	imagesSizes, _ := retrieveImagesSizes(reader.files())
+	return &ReplaceDocx{zipReader: reader, content: content, links: links, headers: headers, footers: footers, images: images, imagesSizes: imagesSizes}, nil
 }
 
 func retrieveImageFilenames(files []*zip.File) (map[string]string, error) {
@@ -248,6 +254,26 @@ func retrieveImageFilenames(files []*zip.File) (map[string]string, error) {
 	for _, f := range files {
 		if strings.HasPrefix(f.Name, "word/media/") {
 			images[f.Name] = ""
+		}
+	}
+	return images, nil
+}
+
+func retrieveImagesSizes(files []*zip.File) (map[string]image.Config, error) {
+	images := make(map[string]image.Config)
+	for _, f := range files {
+		if strings.HasPrefix(f.Name, "word/media/") {
+			read, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+
+			im, err := png.DecodeConfig(read)
+			if err != nil {
+				return nil, err
+			}
+
+			images[f.Name] = im
 		}
 	}
 	return images, nil
@@ -408,6 +434,10 @@ func (d *Docx) ReplaceImage(oldImage string, newImage string) (err error) {
 		return nil
 	}
 	return fmt.Errorf("old image: %q, file not found", oldImage)
+}
+
+func (d *Docx) ImagesSizes() map[string]image.Config {
+	return d.imagesSizes
 }
 
 func (d *Docx) ImagesLen() int {
