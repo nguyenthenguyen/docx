@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -101,6 +102,24 @@ func TestReplace(t *testing.T) {
 				t.Errorf("Expected '%s'\n previous: \n%s\n got: \n%s", tt.expect, extractMiddle(start, end, previous), extractMiddle(start, end, d.content))
 			}
 		})
+	}
+}
+
+func TestReplaceRawByCallback(t *testing.T) {
+	d := loadFile(testFile)
+
+	d.ReplaceRawByCallback(func(oldContent string) string {
+		return regexp.
+			MustCompile(`document\.`).
+			ReplaceAllStringFunc(oldContent, func(src string) string {
+				return "line1\r\nline2"
+			})
+	})
+
+	d.WriteToFile(testFileResult)
+	d = loadFile(testFileResult)
+	if strings.Contains(d.content, "word document.") {
+		t.Error("Should not contain 'word document.' after replacement, got ", d.content)
 	}
 }
 
