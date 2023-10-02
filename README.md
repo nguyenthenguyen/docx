@@ -1,6 +1,6 @@
-## Simple Google Go (Golang) library for replacing text in Microsoft Word (.docx) file
+## Simple Google Go (Golang) library for replacing text and images in Microsoft Word (.docx) file
 
-The following constitutes the bare minimum required to replace text in DOCX document.
+The following constitutes the bare minimum required to replace text and images in DOCX document.
 ``` go
 
 package main
