@@ -43,13 +43,13 @@ func loadFromFs(file string) *Docx {
 	return r.Editable()
 }
 
-//Tests that we are able to load a file from a filesystem and do a quick replacement test
+// Tests that we are able to load a file from a filesystem and do a quick replacement test
 func TestReadDocxFromFS(t *testing.T) {
 	d := loadFromFs(testFile)
 	simpleReplacementTest(d, t)
 }
 
-//Tests that we are able to load a file from a memory array of bytes
+// Tests that we are able to load a file from a memory array of bytes
 func TestReadDocxFromMemory(t *testing.T) {
 	d := loadFromMemory(testFile)
 	simpleReplacementTest(d, t)
@@ -75,9 +75,10 @@ func TestReplace(t *testing.T) {
 		replaceWith string
 		expect      string
 	}{
-		{"Windows line breaks", "line1\r\nline2", "line1<w:br/>line2"},
-		{"Mac line breaks", "line1\rline2", "line1<w:br/>line2"},
-		{"Linux line breaks", "line1\nline2", "line1<w:br/>line2"},
+		{"Windows line breaks", "line1\r\nline2", "line1</w:t><w:br/><w:t>line2"},
+		{"Mac line breaks", "line1\rline2", "line1</w:t><w:br/><w:t>line2"},
+		{"Linux line breaks", "line1\nline2", "line1</w:t><w:br/><w:t>line2"},
+		{"hard line breaks", "line1{{HardLineBreaks}}line2", "line1</w:t><w:p></w:p><w:t>line2"},
 		{"Tabs", "line1\tline2", "line1</w:t><w:tab/><w:t>line2"},
 	}
 	for _, tt := range tests {
