@@ -14,13 +14,13 @@ import (
 	"strings"
 )
 
-//Contains functions to work with data from a zip file
+// Contains functions to work with data from a zip file
 type ZipData interface {
 	files() []*zip.File
 	close() error
 }
 
-//Type for in memory zip files
+// Type for in memory zip files
 type ZipInMemory struct {
 	data *zip.Reader
 }
@@ -29,13 +29,13 @@ func (d ZipInMemory) files() []*zip.File {
 	return d.data.File
 }
 
-//Since there is nothing to close for in memory, just nil the data and return nil
+// Since there is nothing to close for in memory, just nil the data and return nil
 func (d ZipInMemory) close() error {
 	d.data = nil
 	return nil
 }
 
-//Type for zip files read from disk
+// Type for zip files read from disk
 type ZipFile struct {
 	data *zip.ReadCloser
 }
@@ -194,7 +194,7 @@ func replaceHeaderFooter(headerFooter map[string]string, oldString string, newSt
 	return nil
 }
 
-//ReadDocxFromFS opens a docx file from the file system
+// ReadDocxFromFS opens a docx file from the file system
 func ReadDocxFromFS(file string, fs fs.FS) (*ReplaceDocx, error) {
 	f, err := fs.Open(file)
 	if err != nil {
@@ -385,7 +385,8 @@ func streamToByte(stream io.Reader) []byte {
 // in between but it still seems to work correctly in the output document, certainly better
 // than other combinations I tried.
 const TAB = "</w:t><w:tab/><w:t>"
-const NEWLINE = "<w:br/>"
+const NEWLINE = "</w:t><w:br/><w:t>" //
+const HARDLINE = "</w:t><w:p></w:p><w:t>"
 
 func encode(s string) (string, error) {
 	var b bytes.Buffer
@@ -395,10 +396,11 @@ func encode(s string) (string, error) {
 	}
 	output := strings.Replace(b.String(), "<string>", "", 1) // remove string tag
 	output = strings.Replace(output, "</string>", "", 1)
-	output = strings.Replace(output, "&#xD;&#xA;", NEWLINE, -1) // \r\n (Windows newline)
-	output = strings.Replace(output, "&#xD;", NEWLINE, -1)      // \r (earlier Mac newline)
-	output = strings.Replace(output, "&#xA;", NEWLINE, -1)      // \n (unix/linux/OS X newline)
-	output = strings.Replace(output, "&#x9;", TAB, -1)          // \t (tab)
+	output = strings.Replace(output, "&#xD;&#xA;", NEWLINE, -1)          // \r\n (Windows newline)
+	output = strings.Replace(output, "&#xD;", NEWLINE, -1)               // \r (earlier Mac newline)
+	output = strings.Replace(output, "&#xA;", NEWLINE, -1)               // \n (unix/linux/OS X newline)
+	output = strings.Replace(output, "{{HardLineBreaks}}", HARDLINE, -1) // \n (unix/linux/OS X newline)
+	output = strings.Replace(output, "&#x9;", TAB, -1)                   // \t (tab)
 	return output, nil
 }
 
